@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Firebase App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-auth-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    .button-container {
+      margin-bottom: 20px;
+    }
+	.btn-green {
+    background-color: #28a745; /* Green color */
+	transition: background-color 0.3s;
+}
+    .btn-gray {
+    background-color: #6c757d; /* Gray */
+	transition: background-color 0.3s;
+}
+    .btn-teal {
+    background-color: #20c997; /* Teal */
+}
+
+    button {
+      background-color: #004080;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      margin-right: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #003366;
+    }
+
+    #dataContainer {
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+      font-size: 16px;
+      background-color: #004080;
+      color: white;
+    }
+
+    td {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid #ddd;
+      font-size: 18px;
+    }
+
+    td:first-child,
+    td:nth-child(3),
+    td:nth-child(4) {
+      text-align: left;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+
+    .search-container {
+      margin-bottom: 20px;
+    }
+
+    .search-container input {
+      margin-right: 10px;
+      padding: 5px;
+      font-size: 16px;
+      width: 180px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    #status {
+      position: fixed;
+      top: 58px;
+      right: 50px;
+      background-color: #fff;
+      padding: 2px 2px;
+      color: #dc3545;
+      font-weight: 700;
+      border: 2px solid #dc3545;
+      border-radius: 5px;
+      z-index: 10;
+    }
+
+    #progress-bar-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 800px;
+      background-color: #e0e0e0;
+      border-radius: 5px;
+      overflow: hidden;
+      display: none;
+    }
+
+    #progress-bar {
+      height: 20px;
+      background-color: #76c7c0;
+      width: 0%;
+      transition: width 0.3s;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>ადმინისტრატორის გვერდი (შეზღუდულია შედეგის შეცვლა)</h1>
+
+  <div class="button-container">
+    <button onclick="loadData()">მონაცემების გადმოწერა</button>
+    <button onclick="exportToExcel()">ექსპორტი Excel-ში</button>
+    <button class="btn-green" type="button" onclick="exportSelectedToExcel()">ექსპორტი "მოსულები"-ს Excel-ში</button>
+    <button class="btn-gray" type="button" onclick="exportUncheckedToExcel()">ექსპორტი "მოსასვლელები"-ს" Excel-ში</button>
+	<button class="btn-teal" type="button" onclick="refreshPage()">განახლება</button>
+  </div>
+
+  <div class="search-container">
+    <input type="text" id="searchStation" placeholder="უბანი" onkeyup="filterTable()">
+    <input type="text" id="searchNumber" placeholder="უნიკალური ნომერი" onkeyup="filterTable()">
+    <input type="text" id="searchName" placeholder="სახელი" onkeyup="filterTable()">
+    <input type="text" id="searchSurname" placeholder="გვარი" onkeyup="filterTable()">
+    <input type="text" id="searchLobby" placeholder="პასუხისმგებელი პირი" onkeyup="filterTable()">
+    <input type="text" id="searchFullName" placeholder="სრული სახელი" onkeyup="filterTable()">
+  </div>
+
+  <div id="progress-bar-container">
+    <div id="progress-bar"></div>
+  </div>
+
+  <div id="dataContainer"></div>
+  <div id="status"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDEQDducdfYNeMH39kZlgAHk9pBCmiuudc",
+      authDomain: "votes-ec55d.firebaseapp.com",
+      databaseURL: "https://votes-ec55d-default-rtdb.firebaseio.com",
+      projectId: "votes-ec55d",
+      storageBucket: "votes-ec55d.appspot.com",
+      messagingSenderId: "571708850669",
+      appId: "1:571708850669:web:882d2eaf42128d186567e4"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const auth = firebase.auth();
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        loadData();
+      } else {
+        document.getElementById('dataContainer').innerText = "გთხოვთ, შევიდეთ მონაცემების სანახავად.";
+      }
+    });
+
+    function loadData() {
+  const ref = database.ref('excelData');
+  
+  // Show the progress bar
+  document.getElementById('progress-bar-container').style.display = 'block';
+  const progressBar = document.getElementById('progress-bar');
+  progressBar.style.width = '0%'; // Reset progress
+
+  ref.once('value').then(snapshot => {
+    const data = snapshot.val();
+    
+    // Sort data by 'number'
+    const sortedData = Object.entries(data).sort((a, b) => {
+      return (a[1].number || 0) - (b[1].number || 0);
+    }).reduce((acc, [key, value]) => {
+      acc[key] = value;
+      return acc;
+    }, {});
+
+    displayData(sortedData);
+
+    // Show success message for 10 seconds
+    displayStatusMessage("მონაცემები წარმატებით განახლდა!", "green", 10000);
+
+    // Hide the progress bar after loading
+    progressBar.style.width = '100%';
+    setTimeout(() => {
+      document.getElementById('progress-bar-container').style.display = 'none';
+    }, 500);
+  }).catch(error => {
+    console.error("მონაცემების გადმოწერის შეცდომა:", error);
+    progressBar.style.width = '100%'; // Indicate loading complete on error
+    
+    // Show error message for 20 seconds
+    displayStatusMessage("მონაცემების გადმოწერის შეცდომა!", "red", 20000);
+    
+    setTimeout(() => {
+      document.getElementById('progress-bar-container').style.display = 'none';
+    }, 500);
+  });
+}
+
+    // Function to display status messages
+function displayStatusMessage(message, color, duration) {
+  const statusElement = document.getElementById('status');
+  statusElement.innerText = message;
+  statusElement.style.color = color;
+  
+  // Hide the message after the specified duration
+  setTimeout(() => {
+    statusElement.innerText = "";
+  }, duration);
+}
+    const filter = "search term"; // Replace with your actual search term
+displayData(yourData, filter);
+
+
+    function displayData(data, filterCriteria) {
+  const container = document.getElementById('dataContainer');
+  container.innerHTML = '';
+
+  if (data) {
+    const table = document.createElement('table');
+    const headers = ['უბანი', 'უნიკალური ნომერი', 'სახელი', 'გვარი', 'დაბადების თარიღი', 'ტელეფონი', 'პასეხ პასუხისმგებელი პირი', 'პასუხისმგებელი პირის ტელეფონი', 'შედეგი'];
+    const headerRow = document.createElement('tr');
+    
+    headers.forEach(header => {
+      const th = document.createElement('th');
+      th.textContent = header;
+      headerRow.appendChild(th);
+    });
+	
+	
+    
+    table.appendChild(headerRow);
+
+    // Filter the data based on filter criteria
+    const filteredEntries = Object.entries(data).filter(([key, value]) => {
+      // Example filter logic: check if any field contains the filter criteria
+      return filterCriteria ? 
+        Object.values(value).some(field => field.toString().toLowerCase().includes(filterCriteria.toLowerCase())) 
+        : true;
+    });
+
+    // Sort filtered data by the 'number' property
+    const sortedEntries = filteredEntries.sort((a, b) => {
+      const numberA = a[1].number ? a[1].number.toString() : ''; // Ensure to handle undefined
+      const numberB = b[1].number ? b[1].number.toString() : '';
+      return numberA.localeCompare(numberB, undefined, { numeric: true }); // Sort numerically
+    });
+
+    // Append sorted and filtered data to the table
+    sortedEntries.forEach(([key, value]) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${value.station || ''}</td>
+        <td>${value.number || ''}</td>
+        <td>${value.name || ''}</td>
+        <td>${value.surname || ''}</td>
+        <td>${value.date_birth || ''}</td>
+        <td>${value.telefone || ''}</td>
+        <td>${value.lobby || ''}</td>
+        <td>${value.lobby_telefone || ''}</td>
+        <td><input type="checkbox" ${value.checkbox ? 'checked' : ''} data-key="${key}"></td>
+      `;
+      table.appendChild(row);
+    });
+
+    container.appendChild(table);
+  } else {
+    container.innerText = 'არ არსებობს მონაცემები.';
+  }
+}
+
+ // Debounce function to limit how often filterTable is called
+function debounce(func, delay) {
+  let debounceTimer;
+  return function() {
+    const context = this;
+    const args = arguments;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => func.apply(context, args), delay);
+  };
+}
+
+// Filter table function
+function filterTable() {
+  const searchStation = document.getElementById('searchStation').value.toLowerCase();
+  const searchNumber = document.getElementById('searchNumber').value.toLowerCase();
+  const searchName = document.getElementById('searchName').value.toLowerCase();
+  const searchSurname = document.getElementById('searchSurname').value.toLowerCase();
+  const searchLobby = document.getElementById('searchLobby').value.toLowerCase();
+  const searchFullName = document.getElementById('searchFullName').value.toLowerCase();
+
+  const tableRows = document.querySelectorAll('#dataContainer table tr:not(:first-child)');
+
+  tableRows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    const station = cells[0].textContent.toLowerCase();
+    const number = cells[1].textContent.toLowerCase();
+    const name = cells[2].textContent.toLowerCase();
+    const surname = cells[3].textContent.toLowerCase();
+    const lobby = cells[6].textContent.toLowerCase();
+    const fullName = cells[5].textContent.toLowerCase();
+
+    const matchesSearch = (
+      station.includes(searchStation) &&
+      number.includes(searchNumber) &&
+      name.includes(searchName) &&
+      surname.includes(searchSurname) &&
+      lobby.includes(searchLobby) &&
+      fullName.includes(searchFullName)
+    );
+
+    row.style.display = matchesSearch ? '' : 'none';
+  });
+}
+
+// Attach debounced version of filterTable to the input fields
+const debouncedFilterTable = debounce(filterTable, 300);
+
+document.getElementById('searchStation').addEventListener('keyup', debouncedFilterTable);
+document.getElementById('searchNumber').addEventListener('keyup', debouncedFilterTable);
+document.getElementById('searchName').addEventListener('keyup', debouncedFilterTable);
+document.getElementById('searchSurname').addEventListener('keyup', debouncedFilterTable);
+document.getElementById('searchLobby').addEventListener('keyup', debouncedFilterTable);
+document.getElementById('searchFullName').addEventListener('keyup', debouncedFilterTable);
+
+
+
+function exportToExcel() {
+      const data = [];
+      const tableRows = document.querySelectorAll('#dataContainer table tr:not(:first-child)');
+
+      tableRows.forEach(row => {
+        const rowData = [];
+        const cells = row.querySelectorAll('td');
+
+        cells.forEach(cell => {
+          rowData.push(cell.textContent.trim());
+        });
+
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        rowData.push(checkbox.checked);
+
+        data.push(rowData);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet([['უბანი', 'უნიკალური ნომერი', 'სახელი', 'გვარი', 'დაბადების თარიღი', 'ტელეფონი', 'პასეხ პასუხისმგებელი პირი', 'პასუხისმგებელი პირის ტელეფონი', 'შედეგი'],  ...data]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Report");
+      XLSX.writeFile(wb, 'Report.xlsx');
+    }
+	
+	function exportUncheckedToExcel() {
+  const uncheckedData = [];
+  const tableRows = document.querySelectorAll('#dataContainer table tr:not(:first-child)');
+
+  tableRows.forEach(row => {
+    const checkbox = row.querySelector('input[type="checkbox"]');
+    if (row.style.display !== 'none' && checkbox && !checkbox.checked) {  // Check if the row is visible and checkbox is not checked
+      const rowData = [];
+      const cells = row.querySelectorAll('td:not(:last-child)');  // Skip the checkbox column
+
+      cells.forEach(cell => {
+        rowData.push(cell.textContent.trim());
+      });
+
+      uncheckedData.push(rowData);
+    }
+  });
+
+  if (uncheckedData.length > 0) {
+    const ws = XLSX.utils.aoa_to_sheet([['უბანი', 'უნიკალური ნომერი', 'სახელი', 'გვარი', 'დაბადების თარიღი', 'ტელეფონი', 'პასეხ პასუხისმგებელი პირი', 'პასუხისმგებელი პირის ტელეფონი', 'შედეგი'], ...uncheckedData]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Unchecked Data");
+    XLSX.writeFile(wb, 'UncheckedData.xlsx');
+  } else {
+    alert('გთხოვთ მონიშნოთ მინიმუმ ერთი ჩანაწერი.');
+  }
+}
+
+
+    function exportSelectedToExcel() {
+  const selectedData = [];
+  const tableRows = document.querySelectorAll('#dataContainer table tr:not(:first-child)');
+
+  tableRows.forEach(row => {
+    const checkbox = row.querySelector('input[type="checkbox"]');
+    if (row.style.display !== 'none' && checkbox && checkbox.checked) {  // Check if the row is visible and checkbox is checked
+      const rowData = [];
+      const cells = row.querySelectorAll('td:not(:last-child)');  // Skip the checkbox column
+
+      cells.forEach(cell => {
+        rowData.push(cell.textContent.trim());
+      });
+
+      selectedData.push(rowData);
+    }
+  });
+
+  if (selectedData.length > 0) {
+    const ws = XLSX.utils.aoa_to_sheet([['უბანი', 'უნიკალური ნომერი', 'სახელი', 'გვარი', 'დაბადების თარიღი', 'ტელეფონი', 'პასეხ პასუხისმგებელი პირი', 'პასუხისმგებელი პირის ტელეფონი', 'შედეგი'], ...selectedData]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Selected Data");
+    XLSX.writeFile(wb, 'SelectedData.xlsx');
+  } else {
+    alert('გთხოვთ, მონიშნეთ მინიმუმ ერთი ჩანაწერი.');
+  }
+  
+  
+}
+
+ function refreshPage() {
+        location.reload(); // Refresh the current page
+    }
+  </script>
+</body>
+</html>

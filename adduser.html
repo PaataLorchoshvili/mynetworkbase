@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ka"> <!-- Changed language to Georgian (ka) based on content -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>რეგისტრაციის ფორმა</title>
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f4f4f4;
+    }
+    .container {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      width: 300px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      text-align: center;
+      color: #007BFF;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    #status {
+      margin-top: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+ <div class="container">
+  <h1>მომხმარებლის რეგისტრაცია</h1>
+  <input type="email" id="email" placeholder="Email" required />
+  <input type="password" id="password" placeholder="პაროლი" required minlength="6" />
+  <input type="text" id="station" placeholder="უბანი (მაგ, 67.01)" required pattern="^\d{2}\.\d{2}$" />
+  
+  <label for="role">Role:</label>
+  <select id="role">
+    <option value="User" selected>User</option>
+    <option value="Admin">Admin</option>
+  </select>
+  
+  <button onclick="registerUser()">Register</button>
+  <div id="status"></div>
+</div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-database-compat.js"></script>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDEQDducdfYNeMH39kZlgAHk9pBCmiuudc",
+      authDomain: "votes-ec55d.firebaseapp.com",
+      databaseURL: "https://votes-ec55d-default-rtdb.firebaseio.com",
+      projectId: "votes-ec55d",
+      storageBucket: "votes-ec55d.appspot.com",
+      messagingSenderId: "571708850669",
+      appId: "1:571708850669:web:882d2eaf42128d186567e4"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+
+    function registerUser() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const station = document.getElementById('station').value.trim();
+  const role = document.getElementById('role').value; // Get selected role
+
+  // Validate inputs
+  if (!email || !password || !station) {
+    document.getElementById('status').innerText = 'გთხოვთ შეავსოთ შესაბამისი ფორმატით.';
+    document.getElementById('status').style.color = 'red';
+    reloadAfterDelay();
+    return;
+  }
+
+  // Additional front-end validation for station format
+  const stationPattern = /^\d{2}\.\d{2}$/;
+  if (!stationPattern.test(station)) {
+    document.getElementById('status').innerText = 'უბანის ფორმატი არასწორია. უნდა იყოს 00.00';
+    document.getElementById('status').style.color = 'red';
+    reloadAfterDelay();
+    return;
+  }
+
+  // Create a new user with the selected role
+  auth.createUserWithEmailAndPassword(email, password)
+    .then(userCredential => {
+      const userId = userCredential.user.uid;
+
+      // Save user data in the database with selected role
+      database.ref('users/' + userId).set({
+        email: email,
+        station: station,
+        role: role // Save the selected role
+      }).then(() => {
+        document.getElementById('status').innerText = 'მომხმარებელი წარმატებით დაემატა!';
+        document.getElementById('status').style.color = 'green';
+        clearForm(); // Clear form after success
+        reloadAfterDelay(); // Reload after success
+      }).catch(error => {
+        document.getElementById('status').innerText = 'შეცდომა მონაცემების შენახვაში: ' + error.message;
+        document.getElementById('status').style.color = 'red';
+        reloadAfterDelay(); // Reload after error
+      });
+    })
+    .catch(error => {
+      document.getElementById('status').innerText = 'რეგისტრაციის შეცდომა: ' + error.message;
+      document.getElementById('status').style.color = 'red';
+      reloadAfterDelay(); // Reload after error
+    });
+}
+
+    // Clear form inputs after successful registration
+    function clearForm() {
+      document.getElementById('email').value = '';
+      document.getElementById('password').value = '';
+      document.getElementById('station').value = '';
+    }
+
+    // Reload the page after 3 seconds
+    function reloadAfterDelay() {
+      setTimeout(() => {
+        location.reload();
+      }, 3000);
+    }
+  </script>
+
+</body>
+</html>

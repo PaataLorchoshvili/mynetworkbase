@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ადმონისტრატორის გვერდი</title>
+    <style>
+        /* Style for body */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        /* Main container */
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        /* Title */
+        h1 {
+            font-size: 28px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        /* Horizontal line */
+        hr {
+            border: 0;
+            height: 1px;
+            background: linear-gradient(to right, #bbb, #fff, #bbb);
+            margin: 20px 0;
+        }
+
+        /* Style for links */
+        a {
+            display: block;
+            padding: 10px 20px;
+            margin: 10px 0;
+            font-size: 18px;
+            text-decoration: none;
+            color: #3498db;
+            border: 2px solid #3498db;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+
+        /* Decorative figure on the background */
+        /* Figure 1: Large circle */
+        .figure {
+            position: absolute;
+            top: -100px;
+            right: -150px;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, #c7d2e2 0%, #f4f7f9 100%);
+            border-radius: 50%;
+            opacity: 0.5;
+        }
+
+        /* Figure 2: Overlapping circle */
+        .figure2 {
+            position: absolute;
+            top: -20px;
+            right: 80px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, #c7d2e2 0%, #f4f7f9 100%);
+            border-radius: 50%;
+            opacity: 0.5;
+        }
+
+        /* Figure 3: Rectangle */
+        .figure-rectangle {
+            position: absolute;
+            top: 150px;
+            left: -200px;
+            width: 400px;
+            height: 200px;
+            background: linear-gradient(135deg, #74ebd5 0%, #9face6 100%);
+            opacity: 0.4;
+            transform: rotate(45deg);
+        }
+
+        /* Figure 4: Triangle */
+        .figure-triangle {
+            position: absolute;
+            bottom: -100px;
+            right: -50px;
+            width: 0;
+            height: 0;
+            border-left: 200px solid transparent;
+            border-right: 200px solid transparent;
+            border-bottom: 200px solid rgba(52, 152, 219, 0.3);
+            opacity: 0.7;
+        }
+
+        /* Small decorative figure */
+        .figure-small {
+            position: absolute;
+            bottom: -50px;
+            left: -50px;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, #c7d2e2 0%, #f4f7f9 100%);
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <!-- You can toggle between different figures by commenting/uncommenting these divs -->
+
+    <div class="figure"></div> <!-- Large circle -->
+    <div class="figure2"></div> <!-- Overlapping circle -->
+    <div class="figure-rectangle"></div> <!-- Rectangle -->
+    <div class="figure-triangle"></div> <!-- Triangle -->
+    <div class="figure-small"></div> <!-- Small circle -->
+
+    <div class="container">
+        <h1>ადმონისტრატორის გვერდი</h1>
+        <hr>
+        <a href="adminfinalform.html" target="_blank">მონაცემების გადმოწერა</a>
+        <a href="admindatareader.html" target="_blank">უბნები დათვალიერების რეჟიმი</a>
+        <a href="selectexcelfile.html" target="_blank">საწყისი Excel ფაილი</a>
+        <a href="adduser.html" target="_blank">მომხმარებლის დამატება</a>
+        <a href="adminform.html" target="_blank">სრული წვდომა LIVE</a>
+        <a href="adminpagerole.html" target="_blank">მომხმარებლები</a>
+        <hr>
+    </div>
+</body>
+</html>

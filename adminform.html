@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ka"> <!-- Changed language to Georgian (ka) based on content -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>მონაცემები LIVE რეჟიმში</title>
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-auth-compat.js"></script>
+  
+  <style>
+    /* Reset some default styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f4f6f8;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background-color: #fff;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 1000;
+    }
+
+    header h1 {
+      margin-bottom: 15px;
+      font-size: 24px;
+      color: #007BFF;
+    }
+
+    .search-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+    }
+
+    /* Group search inputs */
+    .search-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search-container .load-button {
+      margin-left: auto; /* Pushes the load button to the right */
+    }
+
+    .search-container label {
+      font-weight: 500;
+      margin-right: 5px;
+    }
+
+    .search-container input {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 200px;
+      transition: border-color 0.3s;
+    }
+
+    .search-container input:focus {
+      border-color: #007BFF;
+      outline: none;
+    }
+
+    .search-container button {
+      padding: 8px 16px;
+      border: none;
+      background-color: #007BFF;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.3s;
+    }
+
+    .search-container button:hover {
+      background-color: #0056b3;
+    }
+
+    .load-button {
+      margin-top: 5px;
+      padding: 10px 20px;
+      border: none;
+      background-color: #28a745;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.3s;
+    }
+
+    .load-button:hover {
+      background-color: #1e7e34;
+    }
+
+    #status {
+      margin-top: 10px;
+      color: #dc3545;
+      font-weight: 500;
+    }
+
+    main {
+      flex: 1;
+      margin-top: 160px; /* Increased to accommodate header height */
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .table-container {
+      height: calc(100vh - 220px); /* Adjust based on header and padding */
+      overflow-y: auto;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #007BFF;
+      color: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .search-container {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .search-group {
+        width: 100%;
+      }
+
+      .search-container .load-button {
+        margin-left: 0;
+      }
+
+      .search-container input {
+        width: 100%;
+      }
+
+      table {
+        min-width: 600px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      header h1 {
+        font-size: 20px;
+      }
+
+      .search-container label, .search-container input, .search-container button {
+        width: 100%;
+      }
+
+      .search-container button {
+        margin-top: 10px;
+      }
+
+      .table-container {
+        height: calc(100vh - 240px); /* Adjusted for smaller screens */
+      }
+
+      table {
+        min-width: 500px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>მონაცემები LIVE რეჟიმში</h1>
+    
+    <!-- Search inputs and Load Button -->
+    <div class="search-container">
+      <div class="search-group">
+        <div>
+          <label for="searchNomeri">ძებნა ნომრით:</label>
+          <input type="text" id="searchNomeri" placeholder="შეიყვანეთ უნიკალური ნომერი">
+          <button onclick="searchByNomeri()">ძებნა</button>
+        </div>
+        
+        <div>
+          <label for="searchLobby">პასუხისმგებელი პირი:</label>
+          <input type="text" id="searchLobby" placeholder="პასუხისმგებელი პირი">
+          <button onclick="searchByLobby()">ძებნა</button>
+        </div>
+		 <div>
+          <label for="searchUbani">უბანი:</label>
+          <input type="text" id="searchUbani" placeholder="შეიყვანეთ უბანი">
+          <button onclick="searchByUbani()">ძებნა</button>
+        </div>
+      </div>
+      
+      <button class="load-button" onclick="loadUserData()">საერთო მონაცემები</button>
+    </div>
+    
+    <div id="status"></div>
+  </header>
+
+  <main>
+    <div class="table-container" id="dataContainer"></div>
+  </main>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDEQDducdfYNeMH39kZlgAHk9pBCmiuudc",
+      authDomain: "votes-ec55d.firebaseapp.com",
+      databaseURL: "https://votes-ec55d-default-rtdb.firebaseio.com",
+      projectId: "votes-ec55d",
+      storageBucket: "votes-ec55d.appspot.com",
+      messagingSenderId: "571708850669",
+      appId: "1:571708850669:web:882d2eaf42128d186567e4"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const auth = firebase.auth();
+
+    // Function to load user data after authentication
+    function loadUserData() {
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          // User is logged in, fetch the user's station
+          loadUserStation(user.uid);
+        } else {
+          document.getElementById('status').innerText = "Please log in to see data.";
+        }
+      });
+    }
+
+    // Function to load the user's station from Firebase
+    function loadUserStation(uid) {
+      const userRef = database.ref(`users/${uid}/station`);
+      userRef.once('value')
+        .then(snapshot => {
+          const station = snapshot.val();
+          if (station) {
+            loadDataByStation(station); // Load data based on user's station
+          } else {
+            document.getElementById('status').innerText = "No station assigned to this user.";
+          }
+        })
+        .catch(error => {
+          document.getElementById('status').innerText = "Error loading user station: " + error.message;
+        });
+    }
+
+    // Function to load data based on the user's station
+    function loadDataByStation(station) {
+      const ref = database.ref('excelData');
+      ref.once('value')
+        .then(snapshot => {
+          const data = snapshot.val();
+          const filteredData = filterDataByStation(data, station);
+          displayData(filteredData);
+        })
+        .catch(error => {
+          document.getElementById('status').innerText = "Error loading data: " + error.message;
+        });
+    }
+
+    // Function to filter data based on the user's station
+    function filterDataByStation(data, station) {
+      const filtered = {};
+      Object.entries(data).forEach(([key, value]) => {
+        // Ensure both station values are compared as strings
+        if (value.station.toString() === station.toString()) {
+          filtered[key] = value;
+        }
+      });
+      return filtered;
+    }
+
+    // Function to display the filtered data
+    function displayData(data) {
+      const container = document.getElementById('dataContainer');
+      container.innerHTML = ''; // Clear previous data
+
+      if (data && Object.keys(data).length > 0) {
+          const table = document.createElement('table');
+
+          const headers = ['Station', 'Nomeri', 'Name', 'Surname', 'Date of Birth', 'Telefone', 'Lobby', 'Lobby Telefone', 'Checkbox'];
+          const headerRow = document.createElement('tr');
+          headers.forEach(header => {
+              const th = document.createElement('th');
+              th.textContent = header;
+              headerRow.appendChild(th);
+          });
+          table.appendChild(headerRow);
+
+          Object.entries(data).forEach(([key, value]) => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                  <td>${value.station || ''}</td>
+                  <td>${value.number || ''}</td>
+                  <td>${value.name || ''}</td>
+                  <td>${value.surname || ''}</td>
+                  <td>${value.date_birth || ''}</td>
+                  <td>${value.telefone || ''}</td>
+                  <td>${value.lobby || ''}</td>
+                  <td>${value.lobby_telefone || ''}</td>
+                  <td><input type="checkbox" ${value.checkbox ? 'checked' : ''} data-key="${key}"></td>
+              `;
+
+              const checkbox = row.querySelector('input[type="checkbox"]');
+              checkbox.addEventListener('change', function() {
+                  const isChecked = this.checked;
+                  const recordKey = this.dataset.key; // Correct Firebase key
+
+                  console.log(`Checkbox changed for recordKey: ${recordKey}, checked: ${isChecked}`); // Log key and state
+
+                  // Update the checkbox state in Firebase
+                  database.ref(`excelData/${recordKey}/checkbox`).set(isChecked)
+                      .then(() => {
+                          console.log(`Checkbox state updated for ${recordKey}: ${isChecked}`);
+                      })
+                      .catch(error => {
+                          document.getElementById('status').innerText = "Error updating checkbox state: " + error.message;
+                      });
+              });
+
+              table.appendChild(row);
+          });
+
+          container.appendChild(table);
+      } else {
+          document.getElementById('status').innerText = "No data available for the user's station.";
+      }
+    }
+
+    // Search by Nomeri function
+    function searchByNomeri() {
+        const searchTerm = document.getElementById('searchNomeri').value.trim();
+        if (!searchTerm) {
+            alert("Please enter a nomeri to search.");
+            return;
+        }
+
+        const ref = database.ref('excelData');
+        ref.once('value')
+            .then(snapshot => {
+                const data = snapshot.val();
+                const filteredData = {};
+
+                Object.entries(data).forEach(([key, entry]) => {
+                    if (entry.number == searchTerm) { // Ensure 'number' matches the correct field
+                        filteredData[key] = entry;
+                    }
+                });
+
+                if (Object.keys(filteredData).length > 0) {
+                    displayData(filteredData);
+                    document.getElementById('status').innerText = "";
+                } else {
+                    document.getElementById('status').innerText = "ნომერი არ არსებობს!";
+                }
+            })
+            .catch(error => {
+              document.getElementById('status').innerText = "Error searching nomeri: " + error.message;
+            });
+    }
+
+    // Search by Lobby function
+    function searchByUbani() {
+        const searchTerm = document.getElementById('searchUbani').value.trim();
+        if (!searchTerm) {
+            alert("Please enter a lobby to search.");
+            return;
+        }
+
+        const ref = database.ref('excelData');
+        ref.once('value')
+            .then(snapshot => {
+                const data = snapshot.val();
+                const filteredData = {};
+
+                Object.entries(data).forEach(([key, entry]) => {
+                    if (entry.station == searchTerm) { // Ensure 'lobby' matches the correct field
+                        filteredData[key] = entry;
+                    }
+                });
+
+                if (Object.keys(filteredData).length > 0) {
+                    displayData(filteredData);
+                    document.getElementById('status').innerText = "";
+                } else {
+                    document.getElementById('status').innerText = "ასეთი პიროვნება არ იძებნება ბაზაში!";
+                }
+            })
+            .catch(error => {
+                document.getElementById('status').innerText = "Error searching lobby: " + error.message;
+            });
+    }
+  </script>
+</body>
+</html>

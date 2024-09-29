@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>საწყისი მონაცემები</title>
+ <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(to right, #e0eafc, #cfdef3);
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #4CAF50;
+      margin-bottom: 20px;
+    }
+
+    #fileInput, #email, #password {
+      width: 300px;
+      padding: 10px;
+      margin: 10px auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      display: block;
+    }
+   button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px auto;
+      border-radius: 4px;
+      cursor: pointer;
+      display: block;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #output {
+      margin-top: 20px;
+      overflow-x: auto;
+    }
+
+     table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    #loginDiv {
+      text-align: center;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      padding: 20px;
+      border-radius: 4px;
+      background-color: #fff;
+    }
+
+    #loginStatus {
+      color: red;
+      margin-top: 10px;
+    }
+
+    /* Progress bar styles */
+    #progressContainer {
+      width: 100%;
+      background-color: #f3f3f3;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+
+    #progressBar {
+      width: 0%;
+      height: 20px;
+      background-color: #4CAF50;
+      transition: width 0.4s;
+    }
+	 .icon {
+      font-size: 24px;
+      margin-right: 10px;
+      color: #4CAF50;
+    }
+</style>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+</head>
+<body>
+  <h1><i class="fas fa-upload icon"></i>საწყისი მონაცემები</h1>
+  <input type="file" id="fileInput" />
+  <button onclick="uploadExcelToFirebase()"><i class="fas fa-cloud-upload-alt icon"></i>მონაცემების ატვირთვა სერვერზე</button>
+
+  <!-- Progress bar -->
+  <div id="progressContainer">
+    <div id="progressBar"></div>
+  </div>
+
+  <div id="output"></div> <!-- Div to display the data -->
+
+  <!-- Login form -->
+  <div id="loginDiv">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <div id="loginStatus"></div>
+  </div>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDEQDducdfYNeMH39kZlgAHk9pBCmiuudc",
+      authDomain: "votes-ec55d.firebaseapp.com",
+      databaseURL: "https://votes-ec55d-default-rtdb.firebaseio.com",
+      projectId: "votes-ec55d",
+      storageBucket: "votes-ec55d.appspot.com",
+      messagingSenderId: "571708850669",
+      appId: "1:571708850669:web:882d2eaf42128d186567e4"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+
+    // Check if user is authenticated
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        console.log("User is authenticated:", user.email);
+        document.getElementById('loginDiv').style.display = 'none'; // Hide login form when authenticated
+      } else {
+        console.log("User is not authenticated.");
+        document.getElementById('loginDiv').style.display = 'block'; // Show login form if not authenticated
+      }
+    });
+
+    // Function to handle login
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+          console.log("User logged in:", userCredential.user.email);
+          document.getElementById('loginStatus').innerText = "Login successful!";
+        })
+        .catch((error) => {
+          console.error("Login error:", error.message);
+          document.getElementById('loginStatus').innerText = error.message;
+        });
+    }
+
+    // Function to convert Excel date to a readable date
+    function excelDateToJSDate(serial) {
+      const utc_days = Math.floor(serial - 25569); // Excel date starts from 1/1/1900, subtract 25569 days
+      const date = new Date(utc_days * 86400 * 1000); // Convert days to milliseconds
+      const fractional_day = serial - Math.floor(serial); // Get the fractional part of the date
+      let total_seconds = Math.floor(86400 * fractional_day); // Convert fractional day to seconds
+
+      const seconds = total_seconds % 60;
+      total_seconds -= seconds;
+      const hours = Math.floor(total_seconds / (60 * 60));
+      const minutes = Math.floor(total_seconds / 60) % 60;
+
+      // Return a readable date with time (optional)
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes, seconds);
+    }
+
+    // Function to read Excel and upload data to Firebase
+    function uploadExcelToFirebase() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert("Please choose an Excel file to upload.");
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onloadstart = function() {
+        document.getElementById('progressBar').style.width = '0%'; // Reset progress bar
+      };
+
+      reader.onprogress = function(event) {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          document.getElementById('progressBar').style.width = percentComplete + '%'; // Update progress bar
+        }
+      };
+
+      reader.onload = function (event) {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        const excelData = XLSX.utils.sheet_to_json(worksheet);
+
+        // Iterate over each row and convert date fields
+        excelData.forEach(row => {
+          if (row.date_birth) {
+            row.date_birth = excelDateToJSDate(row.date_birth).toLocaleDateString(); // Convert to readable date format
+          }
+        });
+
+        console.log("Excel Data Parsed:", excelData);
+
+        const ref = database.ref('excelData');
+        ref.set(excelData)
+          .then(() => {
+            console.log("Excel data uploaded successfully!");
+            displayDataOnPage(excelData);
+            alert('მონაცემები წარმატებით აიტვირთა');
+            document.getElementById('progressBar').style.width = '100%'; // Complete progress bar
+          })
+          .catch(error => {
+            console.error('Error uploading data to Firebase:', error);
+          });
+      };
+
+      reader.onerror = function (error) {
+        console.error("Error reading file:", error);
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Function to display the uploaded data on the page
+    function displayDataOnPage(data) {
+      const outputDiv = document.getElementById('output');
+      outputDiv.innerHTML = ''; // Clear previous output
+
+      const table = document.createElement('table');
+      table.border = '1';
+
+      const headers = Object.keys(data[0]);
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+
+      headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+      });
+
+      const thCheckbox = document.createElement('th');
+      thCheckbox.textContent = 'Select';
+      headerRow.appendChild(thCheckbox);
+
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+
+        headers.forEach(header => {
+          const td = document.createElement('td');
+          td.textContent = row[header];
+          tr.appendChild(td);
+        });
+
+        const tdCheckbox = document.createElement('td');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.dataset.id = row.id;
+        tdCheckbox.appendChild(checkbox);
+        tr.appendChild(tdCheckbox);
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      outputDiv.appendChild(table);
+    }
+  </script>
+</body>
+</html>

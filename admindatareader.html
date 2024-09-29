@@ -1,0 +1,928 @@
+<<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hide Table Header</title>
+	 <!-- Firebase Scripts -->
+	 <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-app-compat.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-database-compat.js"></script>
+     <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-auth-compat.js"></script>
+	 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+	 
+	       
+			   
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 5px auto;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #007BFF;
+            font-size: 22px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .search-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .search-row label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-align: center;
+            display: block;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .search-input {
+            flex: 1;
+            margin: 0 10px 10px 0;
+            min-width: 180px;
+        }
+
+        .search-input input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        .search-input input[type="text"]:focus {
+            border-color: #007BFF;
+            outline: none;
+        }
+
+        .right-buttons {
+            position: absolute;
+            top:1.3cm;
+            right:9cm;
+        }
+		
+		 .export-buttons {
+            position: absolute;
+            top: 5.7cm;
+            right: 2.8cm;
+        }
+
+        .right-buttons button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .right-buttons button:nth-child(1) {
+            background-color: #f44336;
+        }
+
+        .right-buttons button:nth-child(2) {
+            background-color: #4CAF50;
+        }
+
+        .button-row {
+            text-align: center;
+            margin-top: 0px;
+        }
+
+        .button-row button {
+            padding: 12px 20px;
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+            width: 173px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+		
+		.export-buttons button {
+            padding: 12px 20px;
+            background-color:  #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 10px;
+            margin: 10px;
+            cursor: pointer;
+            width: 73px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .button-row button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+		#status {
+      position: fixed;  /* Sticks to the top-right of the screen */
+      top: 8px;        /* Distance from the top */
+      right:50px;      /* Distance from the right */
+      background-color: #fff; /* Optional: Background color for better visibility */
+      padding: 2px 2px; /* Optional: Padding for spacing around the text */
+      color: #dc3545;   /* Error text color (red) */
+      font-weight: 700;
+      border: 2px solid #dc3545; /* Optional: Border to highlight the status box */
+      border-radius: 5px; /* Optional: Rounded corners */
+      z-index: 10; /* Ensures it stays on top of other elements */
+    }
+
+        /* User Station in the upper-left corner */
+        #userStation-container {
+            position: absolute;
+            text-align: center;
+            top: 2cm; 
+            left: 2cm;
+            width: 200px;
+        }
+
+       .table-container {
+      height: calc(100vh - 220px); /* Adjust based on header and padding */
+      overflow-y: auto;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #007BFF;
+      color: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+
+        /* Fixed label above the table */
+        .fixed-label {
+            position: fixed;
+            top: 0px; /* Adjust the distance from the top */
+            left: 50%; /* Center the label */
+            transform: translateX(-50%);
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            z-index: 3;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+
+    </style>
+   
+   <script>  
+    
+	 // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDEQDducdfYNeMH39kZlgAHk9pBCmiuudc",
+            authDomain: "votes-ec55d.firebaseapp.com",
+            databaseURL: "https://votes-ec55d-default-rtdb.firebaseio.com",
+            projectId: "votes-ec55d",
+            storageBucket: "votes-ec55d.appspot.com",
+            messagingSenderId: "571708850669",
+            appId: "1:571708850669:web:882d2eaf42128d186567e4"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+
+        // Function to load user data after authentication
+        function loadUserData() {
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          // User is logged in, fetch the user's station
+          loadUserStation(user.uid);
+        } else {
+          document.getElementById('status').innerText = "Please log in to see data.";
+        }
+      });
+    }
+
+        // Function to load the user's station from Firebase
+        function loadUserStation(uid) {
+            const userRef = database.ref(`users/${uid}/station`);
+            userRef.once('value')
+                .then(snapshot => {
+                    const station = snapshot.val();
+                    if (station) {
+                        // Set the input field value with the station
+                        const userStationInput = document.getElementById('userStation');
+                        userStationInput.value = station;
+
+                        // Lock the input field to prevent editing
+                        userStationInput.readOnly = true;
+
+                        // Load data based on the station
+                        loadDataByStation(station);
+                    } else {
+                        document.getElementById('status').innerText = "No station assigned to this user.";
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('status').innerText = "Error loading user station: " + error.message;
+                });
+        }
+		
+
+        // Function to load data based on the user's station
+        function loadDataByStation(station) {
+            const ref = database.ref('excelData');
+            ref.once('value')
+                .then(snapshot => {
+                    const data = snapshot.val();
+                    const filteredData = filterDataByStation(data, station);
+                    displayData(filteredData);
+                })
+                .catch(error => {
+                    document.getElementById('status').innerText = "Error loading data: " + error.message;
+                });
+        }
+
+        // Filter data by user's station
+        function filterDataByStation(data, station) {
+            const filtered = {};
+            Object.entries(data).forEach(([key, value]) => {
+                if (value.station.toString() === station.toString()) {
+                    filtered[key] = value;
+                }
+            });
+            return filtered;
+        }
+
+        // Function to display the filtered data in a table
+        function displayData(data) {
+            const container = document.getElementById('dataContainer');
+            container.innerHTML = ''; // Clear previous data
+
+            if (data && Object.keys(data).length > 0) {
+                const table = document.createElement('table');
+
+                const headers = ['უბანი', 'ნომერი', 'სახელი', 'გვარი', 'დაბ. თარიღი', 'ტელეფონი', 'პასუხისმგებელი', 'პას. ტელ', 'გამოცხადდა'];
+                const headerRow = document.createElement('tr');
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    headerRow.appendChild(th);
+                });
+                table.appendChild(headerRow);
+
+                Object.entries(data).forEach(([key, value]) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${value.station || ''}</td>
+                        <td>${value.number || ''}</td>
+                        <td>${value.name || ''}</td>
+                        <td>${value.surname || ''}</td>
+                        <td>${value.date_birth || ''}</td>
+                        <td>${value.telefone || ''}</td>
+                        <td>${value.lobby || ''}</td>
+                        <td>${value.lobby_telefone || ''}</td>
+                        <td><input type="checkbox" ${value.checkbox ? 'checked' : ''} data-key="${key}"></td>
+                    `;
+
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    checkbox.addEventListener('change', function() {
+                        const isChecked = this.checked;
+                        const recordKey = this.dataset.key;
+
+                        // Update the checkbox state in Firebase
+                        database.ref(`excelData/${recordKey}/checkbox`).set(isChecked)
+                            .then(() => {
+                                console.log(`Checkbox state updated for ${recordKey}: ${isChecked}`);
+                                displayStatusMessage2("მონაცემი შენახულია!", "darkgreen");
+                            })
+                            .catch(error => {
+                                document.getElementById('status').innerText = "Error updating checkbox state: " + error.message;
+                                displayStatusMessage2("შეცდომა: მონაცემი არ განახლდა!!!: " + error.message, "red");
+                            });
+                    });
+
+                    table.appendChild(row);
+                });
+
+                container.appendChild(table);
+
+                // Display the total number of rows
+                const rowCount = Object.keys(data).length;
+                const rowCountDiv = document.createElement('div');
+                rowCountDiv.innerText = `Total rows: ${rowCount}`;
+                container.appendChild(rowCountDiv);
+            } else {
+                document.getElementById('status').innerText = "No data available for the user's station.";
+            }
+        }
+		
+		
+		function searchByNomeri() {
+    // Clear input fields
+    document.getElementById('lobby').value = '';
+    document.getElementById('name').value = '';
+    document.getElementById('surname').value = '';
+    document.getElementById('station').value = '';
+
+    const searchTerm = document.getElementById('searchNomeri').value.trim();
+    if (!searchTerm) {
+        alert("Please enter a nomeri to search.");
+        return;
+    }
+
+    const userStationValue = document.getElementById('userStation').value.trim();
+    const userStation = Number(userStationValue); // Convert to number
+    console.log("User Station Value:", userStation); // Log for debugging
+
+    if (isNaN(userStation)) {
+        displayStatusMessage2("Invalid station value.", "red");
+        return;
+    }
+
+    const ref = database.ref('excelData');
+    ref.once('value')
+        .then(snapshot => {
+            const data = snapshot.val();
+            const filteredData = {};
+            console.log(`Searching for nomeri: ${searchTerm} in station: ${userStation}`);
+
+            Object.entries(data).forEach(([key, entry]) => {
+                const entryStation = Number(entry.station); // Convert entry.station to a number
+
+                // Check if 'number' matches
+                if (entry.number == searchTerm) {
+                    filteredData[key] = entry;
+                }
+            });
+
+            if (Object.keys(filteredData).length > 0) {
+                displayData(filteredData);
+                displayStatusMessage2(`ფილტრის შედეგი ნომრით - ${searchTerm}`, "darkgreen");
+            } else {
+                displayData(filteredData);
+                displayStatusMessage2(`შედეგი ნომრისთვის - ${searchTerm}- არ იძებნება!`, "red");
+            }
+        })
+        .catch(error => {
+            displayStatusMessage2("დაფიქსირდა შეცდომა: " + error.message, "red");
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('searchNomeri').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            searchByNomeri(); // Call the search function on Enter
+        }
+    });
+});
+
+// Function to display status messages
+function displayStatusMessage2(message, color) {
+    const statusElement = document.getElementById('status');
+    statusElement.innerText = message;
+    statusElement.style.color = color;
+    
+    // Hide the message after 2 seconds
+    setTimeout(() => {
+        statusElement.innerText = "";
+    }, 2000);
+}
+	
+
+		function searchByUbani() {
+        const searchTerm = document.getElementById('searchUbani').value.trim();
+        if (!searchTerm) {
+            alert("Please enter a lobby to search.");
+            return;
+        }
+
+        const ref = database.ref('excelData');
+        ref.once('value')
+            .then(snapshot => {
+                const data = snapshot.val();
+                const filteredData = {};
+
+                Object.entries(data).forEach(([key, entry]) => {
+                    if (entry.station == searchTerm) { // Ensure 'lobby' matches the correct field
+                        filteredData[key] = entry;
+                    }
+                });
+
+                if (Object.keys(filteredData).length > 0) {
+                    displayData(filteredData);
+                    document.getElementById('status').innerText = "";
+                } else {
+                    document.getElementById('status').innerText = "ასეთი პიროვნება არ იძებნება ბაზაში!";
+                }
+            })
+            .catch(error => {
+                document.getElementById('status').innerText = "Error searching lobby: " + error.message;
+            });
+    }
+
+
+	
+	function searchByLobby() {
+	 // Clear searchLobby and searchNomeri input fields
+   
+   document.getElementById('searchNomeri').value = '';
+   document.getElementById('name').value = '';
+   document.getElementById('surname').value = '';
+   document.getElementById('station').value = '';
+	
+    const searchTerm = document.getElementById('lobby').value.trim();
+    if (!searchTerm) {
+        alert("Please enter a lobby name to search.");
+        return;
+    }
+
+    const userStationValue = document.getElementById('userStation').value.trim();
+    console.log("User Station Value:", userStationValue); // Log value for debugging
+
+    const userStation = Number(userStationValue);
+    if (!userStation) {
+        document.getElementById('status').innerText = "Access denied: You do not have permission to view this station.";
+        return;
+    }
+
+    const ref = database.ref('excelData');
+    ref.once('value')
+        .then(snapshot => {
+            const data = snapshot.val();
+            const filteredData = {};
+
+            Object.entries(data).forEach(([key, entry]) => {
+                const entryStation = Number(entry.station); // Convert entry.station to a number
+
+                // Perform the search if user has access to the station
+                if (entryStation === userStation && entry.lobby && entry.lobby.toString().toLowerCase() === searchTerm.toLowerCase()) {
+                    filteredData[key] = entry;
+                }
+            });
+
+            if (Object.keys(filteredData).length > 0) {
+                displayData(filteredData);
+                displayStatusMessage2(` შედეგი პასუხისმგებელი პირისთვის - ${searchTerm}`, "darkgreen");
+            } else {
+			    displayData(filteredData);
+                displayStatusMessage2(`პასუხისმგებელი პირი - ${searchTerm}- არ იძებნება!`, "red");
+            }
+        })
+        .catch(error => {
+            displayStatusMessage2("დაფიქსირდა შეცდომა: " + error.message, "red");
+        });
+}
+        document.addEventListener('DOMContentLoaded', function() {
+	 // Your JavaScript code goes here
+    document.getElementById('lobby').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            searchByLobby(); // Call the search function when Enter is pressed
+        }
+    });
+});
+
+        // Function to search by name
+function searchByName() {
+    // Clear searchLobby and searchNomeri input fields
+    document.getElementById('lobby').value = '';
+    document.getElementById('searchNomeri').value = '';
+    document.getElementById('station').value = '';
+
+    const searchTerm = document.getElementById('name').value.trim();
+    if (!searchTerm) {
+        alert("Please enter a lobby name to search.");
+        return;
+    }
+
+    const userStationValue = document.getElementById('userStation').value.trim();
+    console.log("User Station Value:", userStationValue); // Log value for debugging
+
+    const userStation = Number(userStationValue);
+    if (!userStation) {
+        document.getElementById('status').innerText = "Access denied: You do not have permission to view this station.";
+        return;
+    }
+
+    const ref = database.ref('excelData');
+    ref.once('value')
+        .then(snapshot => {
+            const data = snapshot.val();
+            const filteredData = {};
+
+            Object.entries(data).forEach(([key, entry]) => {
+                const entryStation = Number(entry.station); // Convert entry.station to a number
+
+                // Perform the search if user has access to the station
+                if (entryStation === userStation && entry.name && entry.name.toString().toLowerCase() === searchTerm.toLowerCase()) {
+                    filteredData[key] = entry;
+                }
+            });
+
+            if (Object.keys(filteredData).length > 0) {
+                displayData(filteredData);
+                displayStatusMessage2(`ფილტრის შედეგი სახელით - ${searchTerm}`, "darkgreen");
+            } else {
+			    displayData(filteredData);
+                displayStatusMessage2(`სახელი - ${searchTerm} - არ იძებნება!`, "red");
+            }
+        })
+        .catch(error => {
+            displayStatusMessage2("დაფიქსირდა შეცდომა: " + error.message, "red");
+        });
+}
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Your JavaScript code goes here
+        document.getElementById('name').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                searchByName(); // Call the search function when Enter is pressed
+            }
+        });
+    });
+
+      
+	  
+	  
+	  
+	  
+        function searchBySurname() {
+		 // Clear searchLobby and searchNomeri input fields
+   document.getElementById('lobby').value = '';
+   document.getElementById('searchNomeri').value = '';
+   
+   document.getElementById('station').value = '';
+    const searchTerm = document.getElementById('surname').value.trim();
+    if (!searchTerm) {
+        alert("Please enter a lobby name to search.");
+        return;
+    }
+
+    const userStationValue = document.getElementById('userStation').value.trim();
+    console.log("User Station Value:", userStationValue); // Log value for debugging
+
+    const userStation = Number(userStationValue);
+    if (!userStation) {
+        document.getElementById('status').innerText = "Access denied: You do not have permission to view this station.";
+        return;
+    }
+
+    const ref = database.ref('excelData');
+    ref.once('value')
+        .then(snapshot => {
+            const data = snapshot.val();
+            const filteredData = {};
+
+            Object.entries(data).forEach(([key, entry]) => {
+                const entryStation = Number(entry.station); // Convert entry.station to a number
+
+                // Perform the search if user has access to the station
+                if (entryStation === userStation && entry.surname && entry.surname.toString().toLowerCase() === searchTerm.toLowerCase()) {
+                    filteredData[key] = entry;
+                }
+            });
+
+            if (Object.keys(filteredData).length > 0) {
+                displayData(filteredData);
+                displayStatusMessage2(`ფილტრის შედეგი გვარისთვის - ${searchTerm}`, "darkgreen");
+            } else {
+			    displayData(filteredData);
+                displayStatusMessage2(`გვარი - ${searchTerm}- არ იძებნება!`, "red");
+            }
+        })
+        .catch(error => {
+            displayStatusMessage2("დაფიქსირდა შეცდომა: " + error.message, "red");
+        });
+}
+      document.addEventListener('DOMContentLoaded', function() {
+	 // Your JavaScript code goes here
+    document.getElementById('surname').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            searchBySurname(); // Call the search function when Enter is pressed
+        }
+    });
+});
+
+
+function searchByFullName() {
+    const nameSearchTerm = document.getElementById('name').value.trim();
+    const surnameSearchTerm = document.getElementById('surname').value.trim();
+
+    // Check if both search terms are empty
+    if (!nameSearchTerm && !surnameSearchTerm) {
+        alert("Please enter either a name or a surname to search.");
+        return;
+    }
+
+    const userStationValue = document.getElementById('userStation').value.trim();
+    console.log("User Station Value:", userStationValue); // Log value for debugging
+
+    const userStation = Number(userStationValue);
+    if (!userStation) {
+        document.getElementById('status').innerText = "Access denied: You do not have permission to view this station.";
+        return;
+    }
+
+    const ref = database.ref('excelData');
+    ref.once('value')
+        .then(snapshot => {
+            const data = snapshot.val();
+            const filteredData = {};
+
+            Object.entries(data).forEach(([key, entry]) => {
+                const entryStation = Number(entry.station); // Convert entry.station to a number
+
+                // Check for matches for both name and surname
+                const isNameMatch = nameSearchTerm && entry.name && entry.name.toString().toLowerCase() === nameSearchTerm.toLowerCase();
+                const isSurnameMatch = surnameSearchTerm && entry.surname && entry.surname.toString().toLowerCase() === surnameSearchTerm.toLowerCase();
+
+                // Only add to filteredData if both name and surname match
+                if (entryStation === userStation && isNameMatch && isSurnameMatch) {
+                    filteredData[key] = entry;
+                }
+            });
+
+            if (Object.keys(filteredData).length > 0) {
+                displayData(filteredData);
+                document.getElementById('status').innerText = "";
+                displayStatusMessage2("პიროვნება ვალიდურია", "darkgreen");
+            } else {
+			    displayData(filteredData);
+                displayStatusMessage2("პიროვნება ვერ მოიძებნა", "red");
+            }
+        })
+        .catch(error => {
+            displayStatusMessage2("Error searching person: " + error.message, "red");
+        });
+}
+
+
+
+
+
+    function filterByCheckbox(isChecked) {
+    const station = document.getElementById('userStation').value;
+    const ref = database.ref('excelData');
+    
+    ref.once('value')
+        .then(snapshot => {
+            const data = snapshot.val();
+            const filteredData = filterDataByStation(data, station); // Filter data by station
+            const checkboxFilteredData = filterDataByCheckbox(filteredData, isChecked); // Filter by checkbox state
+            displayData(checkboxFilteredData); // Display the filtered data
+        })
+        .catch(error => {
+            document.getElementById('status').innerText = "Error loading data: " + error.message;
+        });
+}
+
+     // Filter data by checkbox state
+    function filterDataByCheckbox(data, isChecked) {
+	 // Clear searchLobby and searchNomeri input fields
+   document.getElementById('lobby').value = '';
+   document.getElementById('searchNomeri').value = '';
+   document.getElementById('name').value = '';
+   document.getElementById('surname').value = '';
+   document.getElementById('station').value = '';
+    const filtered = {};
+    Object.entries(data).forEach(([key, value]) => {
+        if (value.checkbox === isChecked) { // Compare checkbox value
+            filtered[key] = value;
+        }
+    });
+    return filtered;
+}
+
+    function filterByOppositeCheckbox(isChecked) {
+    const station = document.getElementById('userStation').value; // Get station input
+    const ref = database.ref('excelData');
+
+    ref.once('value')
+        .then(snapshot => {
+            const data = snapshot.val();
+            const filteredData = filterDataByStation(data, station); // Filter by station first
+            const checkboxFilteredData = filterDataByOppositeCheckbox(filteredData, isChecked); // Filter by opposite checkbox state
+            displayData(checkboxFilteredData); // Display the filtered data
+        })
+        .catch(error => {
+            displayStatusMessage2("Error loading data: " + error.message, "red");
+        });
+}
+
+      // This function now filters data by the opposite checkbox state
+      function filterDataByOppositeCheckbox(data, isChecked) {
+	   // Clear searchLobby and searchNomeri input fields
+   document.getElementById('lobby').value = '';
+   document.getElementById('searchNomeri').value = '';
+   document.getElementById('name').value = '';
+   document.getElementById('surname').value = '';
+   document.getElementById('station').value = '';
+
+       const filtered = {};
+    Object.entries(data).forEach(([key, value]) => {
+        if (value.checkbox !== isChecked) { // Check for the opposite state
+            filtered[key] = value;
+        }
+    });
+    return filtered;
+}
+
+
+
+
+     // Function to display status messages
+function displayStatusMessage2(message, color) {
+    const statusElement = document.getElementById('status');
+    statusElement.innerText = message;
+    statusElement.style.color = color;
+    
+    // Hide the message after 2 seconds
+    setTimeout(() => {
+        statusElement.innerText = "";
+    }, 2000);
+}
+      
+
+        
+        function exportToExcel() {
+    const data = [];
+    // Select table rows from the displayed data container
+    const tableRows = document.querySelectorAll('#dataContainer table tr:not(:first-child)');
+
+    // Loop through each row to gather the data
+    tableRows.forEach(row => {
+        const rowData = [];
+        const cells = row.querySelectorAll('td');
+
+        // Extract text from each cell
+        cells.forEach(cell => {
+            rowData.push(cell.textContent.trim());
+        });
+
+        // Include the checkbox status if necessary
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            rowData.push(checkbox.checked);
+        }
+
+        data.push(rowData);
+    });
+
+    // Define the headers for your Excel file
+    const ws = XLSX.utils.aoa_to_sheet([
+        ['უბანი', 'უნიკალური ნომერი', 'სახელი', 'გვარი', 'დაბადების თარიღი', 'ტელეფონი', 'პასეხ პასუხისმგებელი პირი', 'პასუხისმგებელი პირის ტელეფონი', 'შედეგი'], 
+        ...data
+    ]);
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+
+    // Create a timestamp for the filename
+    const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '');
+    const filename = `data_${timestamp}.xlsx`;
+
+    // Write the workbook to a file
+    XLSX.writeFile(wb, filename);
+}
+
+	   
+	   
+
+
+        // Function to display status messages
+        function displayStatusMessage(message, color) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerText = message;
+            statusDiv.style.color = color;
+			 // Hide the message after 2 seconds
+        setTimeout(() => {
+        statusElement.innerText = "";
+        }, 2000);
+}
+
+        // Function to update the full name field automatically
+        function updateFullName() {
+            var firstName = document.getElementById("name").value;
+            var lastName = document.getElementById("surname").value;
+            document.getElementById("fullName").value = firstName + " " + lastName;
+        }
+
+        // Load user data on page load
+        window.onload = function() {
+            loadUserData();
+        };
+    </script>
+
+</head>
+<body>
+
+<div class="container">
+    <h2>ძირითადი ფორმა</h2>
+
+    <div class="search-row">
+        <div class="search-input" id="station-container">
+            <label for="searchUbani">ძებნა უბნით:</label>
+          <input type="text" id="searchUbani" placeholder="შეიყვანეთ უბანი">
+        </div>
+
+        <div class="search-input" id="searchNomeri-container">
+            <label for="searchNomeri">ძებნა ნომრით:</label>
+            <input type="text" id="searchNomeri" placeholder="შეიყვანეთ უნიკალური ნომერი">
+        </div>
+
+        <div class="search-input" id="lobby-container">
+            <label for="lobby">რეკომენდატორი:</label>
+            <input type="text" id="lobby" placeholder="შეიყვანეთ რეკომენდატორი">
+        </div>
+
+        <div class="search-input" id="name-container">
+            <label for="name">სახელი:</label>
+            <input type="text" id="name" placeholder="შეიყვანეთ სახელი" oninput="updateFullName()">
+        </div>
+
+        <div class="search-input" id="surname-container">
+            <label for="surname">გვარი:</label>
+            <input type="text" id="surname" placeholder="შეიყვანეთ გვარი" oninput="updateFullName()">
+        </div>
+        
+        <div class="search-input" id="userStation-container">
+            <label for="userStation">თქვენი უბანი:</label>
+            <input type="text" id="userStation" name="userStation" readonly>
+        </div>
+
+        <div class="search-input" id="fullName-container">
+            <label for="fullName">პიროვნება:</label>
+            <input type="text" id="fullName" name="fullName" readonly>
+        </div>
+
+        <div class="right-buttons">
+            <button type="button" onclick="filterByCheckbox()">FALSE</button>
+            <button type="button" onclick="filterByOppositeCheckbox()">TRUE</button>
+        </div>
+    </div>
+
+    <div class="button-row">
+         <button onclick="searchByUbani()">უბანი</button>
+        <button onclick="searchByNomeri()">ნომრით</button>
+        <button onclick="searchByLobby()">რეკომენდატორი</button>
+        <button onclick="searchByName()">სახელით</button>
+        <button onclick="searchBySurname()">გვარით</button>
+        <button type="button" onclick="searchByFullName()">სახელი-გვარი</button>
+    </div>
+
+    <!-- Export Buttons -->
+    <div class="export-buttons">        
+        <button type="button" onclick="exportToExcel()">EXCEL</button>
+    </div>
+</div>
+
+<main>
+    <div class="table-container" id="dataContainer"></div>
+</main>
+
+<div id="status"></div>
+
+
+
+</body>
+</html>
