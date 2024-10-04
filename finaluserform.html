@@ -289,6 +289,37 @@
 	text-align: center;
 	font-size: 16px;
 }
+    /* Default styles for larger screens */
+.container {
+    max-width: 95%;
+}
+
+/* Styles for tablets */
+@media (max-width: 768px) {
+    .left-frame, .right-frame {
+        width: 30%; /* Adjust width for smaller screens */
+    }
+    .center-frame {
+        width: 40%;
+    }
+}
+
+/* Styles for mobile devices */
+@media (max-width: 480px) {
+    .left-frame, .right-frame, .center-frame {
+        width: 100%; /* Stack frames on small screens */
+        margin: 0; /* Remove margins */
+    }
+    h2 {
+        font-size: 14px; /* Reduce font size */
+    }
+    button {
+        width: 100%; /* Make buttons full width */
+    }
+
+
+
+    
     </style>
    
     <script>  
@@ -309,33 +340,27 @@
         const database = firebase.database();
         const auth = firebase.auth();
 
-        // Function to load user data after authentication
-        function loadUserData() {
-      auth.onAuthStateChanged(user => {
-        if (user) {
-          // User is logged in, fetch the user's station
-          loadUserStation(user.uid);
-        } else {
-          document.getElementById('status').innerText = "Please log in to see data.";
-        }
-      });
-    }
+          window.onload = function() {
+            loadUserData();
+        };
 
-        
+        function loadUserData() {
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    loadUserStation(user.uid);
+                } else {
+                    document.getElementById('status').innerText = "Please log in to see data.";
+                }
+            });
+        }
+
         function loadUserStation(uid) {
             const userRef = database.ref(`users/${uid}/station`);
             userRef.once('value')
                 .then(snapshot => {
                     const station = snapshot.val();
                     if (station) {
-                        // Set the input field value with the station
-                        const userStationInput = document.getElementById('userStation');
-                        userStationInput.value = station;
-
-                        // Lock the input field to prevent editing
-                        userStationInput.readOnly = true;
-
-                        // Load data based on the station
+                        document.getElementById('userStation').value = station;
                         loadDataByStation(station);
                     } else {
                         document.getElementById('status').innerText = "No station assigned to this user.";
@@ -345,9 +370,7 @@
                     document.getElementById('status').innerText = "Error loading user station: " + error.message;
                 });
         }
-		
 
-       
         function loadDataByStation(station) {
             const ref = database.ref('excelData');
             ref.once('value')
@@ -361,7 +384,6 @@
                 });
         }
 
-        
         function filterDataByStation(data, station) {
             const filtered = {};
             Object.entries(data).forEach(([key, value]) => {
@@ -372,15 +394,46 @@
             return filtered;
         }
 
-       
+        let checkboxChanges = [];
+
+        function updateCheckboxStates(changes) {
+    if (changes.length === 0) return;
+
+    const updates = {};
+    changes.forEach(({ key, checked }) => {
+        updates[`excelData/${key}/checkbox`] = checked;
+        updates[`excelData/${key}/checkedBy`] = auth.currentUser.displayName; // Set the current user's name
+    });
+
+    database.ref().update(updates)
+        .then(() => {
+            console.log('Checkbox states updated successfully.');
+            checkboxChanges = [];
+            displayStatusMessage2(`წარმატებით განახლდა`, "darkgreen");
+        })
+        .catch(error => {
+            console.error('Error updating checkbox states:', error);
+            displayStatusMessage2(`შეცდომა მონაცემის განახლებაში`, "red");
+        });
+}
+        // Debounce function to limit the rate of updates
+        function debounce(func, delay) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        const debounceUpdateCheckboxStates = debounce(updateCheckboxStates, 300);
+
         function displayData(data) {
             const container = document.getElementById('dataContainer');
             container.innerHTML = ''; // Clear previous data
 
             if (data && Object.keys(data).length > 0) {
                 const table = document.createElement('table');
-
-                const headers = ['უბანი', 'ნომერი', 'გამოცხადდა', 'სახელი', 'გვარი', 'დაბ. თარიღი', 'ტელეფონი', 'პასუხისმგებელი', 'პას. ტელ' ];
+                const headers = ['უბანი', 'ნომერი', 'გამოცხადდა', 'სახელი', 'გვარი', 'დაბ. თარიღი', 'ტელეფონი', 'პასუხისმგებელი', 'პას. ტელ'];
                 const headerRow = document.createElement('tr');
                 headers.forEach(header => {
                     const th = document.createElement('th');
@@ -389,19 +442,23 @@
                 });
                 table.appendChild(headerRow);
 
-                Object.entries(data).forEach(([key, value]) => {
+                // Sort data based on the number
+                const sortedData = Object.entries(data).sort(([, a], [, b]) => {
+                    return (parseInt(a.number) || 0) - (parseInt(b.number) || 0);
+                });
+
+                sortedData.forEach(([key, value]) => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${value.station || ''}</td>
                         <td>${value.number || ''}</td>
-						<td><input type="checkbox" ${value.checkbox ? 'checked' : ''} data-key="${key}"></td>
+                        <td><input type="checkbox" ${value.checkbox ? 'checked' : ''} data-key="${key}"></td>
                         <td>${value.name || ''}</td>
                         <td>${value.surname || ''}</td>
                         <td>${value.date_birth || ''}</td>
-                        <td>${value.telefone || ''}</td>
+                        <td>${value.telephone || ''}</td>
                         <td>${value.lobby || ''}</td>
                         <td>${value.lobby_telefone || ''}</td>
-                        
                     `;
 
                     const checkbox = row.querySelector('input[type="checkbox"]');
@@ -409,16 +466,8 @@
                         const isChecked = this.checked;
                         const recordKey = this.dataset.key;
 
-                        // Update the checkbox state in Firebase
-                        database.ref(`excelData/${recordKey}/checkbox`).set(isChecked)
-                            .then(() => {
-                                console.log(`Checkbox state updated for ${recordKey}: ${isChecked}`);
-                                displayStatusMessage2("მონაცემი შენახულია!", "darkgreen");
-                            })
-                            .catch(error => {
-                                document.getElementById('status').innerText = "Error updating checkbox state: " + error.message;
-                                displayStatusMessage2("შეცდომა: მონაცემი არ განახლდა!!!: " + error.message, "red");
-                            });
+                        checkboxChanges.push({ key: recordKey, checked: isChecked });
+                        debounceUpdateCheckboxStates(checkboxChanges);
                     });
 
                     table.appendChild(row);
@@ -426,8 +475,8 @@
 
                 container.appendChild(table);
 
-                // Display the total number of rows
-                const rowCount = Object.keys(data).length;
+                // Display total number of rows
+                const rowCount = sortedData.length;
                 const rowCountDiv = document.createElement('div');
                 rowCountDiv.innerText = `Total rows: ${rowCount}`;
                 container.appendChild(rowCountDiv);
@@ -435,6 +484,14 @@
                 document.getElementById('status').innerText = "No data available for the user's station.";
             }
         }
+
+        function displayStatusMessage2(message, color) {
+            const status = document.getElementById('status');
+            status.innerText = message;
+            status.style.color = color;
+        }
+
+
 		
 		
 		function searchByNomeri() {
